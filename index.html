@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Awantura o Kasę - V15</title>
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#ff9800">
+<meta name="mobile-web-app-capable" content="yes">
+
+<link rel="manifest" href="manifest.json">
+
+<link rel="apple-touch-icon" href="icon.png">
+
+<style>
+    :root {
+        --bg-color: #121212;
+        --panel-bg: #1e1e1e;
+        --text-color: #ffffff;
+        --border-color: #333;
+        --accent-color: #ff9800;
+        
+        /* Team Colors */
+        --team1-bg: #d32f2f; 
+        --team2-bg: #388e3c; 
+        --team3-bg: #1976d2;
+        
+        --success-color: #4caf50;
+        --danger-color: #f44336;
+    }
+
+    * { box-sizing: border-box; touch-action: manipulation; outline: none; -webkit-tap-highlight-color: transparent; }
+
+    body {
+        margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        background: var(--bg-color); color: var(--text-color);
+        min-height: 100vh; display: flex; flex-direction: column;
+        overflow-x: hidden; font-size: 16px;
+        /* iOS PWA padding fix (Safe Area) */
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+    }
+
+    /* --- UI COMPONENTS --- */
+    button { cursor: pointer; border: none; font-family: inherit; transition: all 0.2s; }
+    input { font-family: inherit; }
+    
+    .hidden { display: none !important; }
+    .flex-center { display: flex; align-items: center; justify-content: center; }
+
+    /* --- TOAST NOTIFICATIONS --- */
+    #toast-container {
+        position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+        z-index: 9999; pointer-events: none; display: flex; flex-direction: column; gap: 10px;
+        width: 90%; max-width: 400px;
+    }
+    .toast {
+        background: rgba(50, 50, 50, 0.95); color: #fff; padding: 12px 24px; border-radius: 25px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5); border: 1px solid #555; font-size: 14px;
+        animation: fadeInOut 3s forwards; text-align: center;
+    }
+    @keyframes fadeInOut {
+        0% { opacity: 0; transform: translateY(20px); }
+        10% { opacity: 1; transform: translateY(0); }
+        90% { opacity: 1; transform: translateY(0); }
+        100% { opacity: 0; transform: translateY(-20px); }
+    }
+
+    /* --- HEADER --- */
+    header {
+        background: #000; padding: 0 10px; border-bottom: 2px solid var(--border-color);
+        display: flex; justify-content: space-between; align-items: center; height: 50px; flex-shrink: 0; z-index: 100;
+    }
+    h1 { margin: 0; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
+    
+    .host-tabs { display: flex; gap: 5px; background: #222; padding: 3px; border-radius: 6px; }
+    .tab-btn { background: transparent; color: #888; padding: 6px 14px; font-size: 13px; font-weight: bold; border-radius: 4px; }
+    .tab-btn.active { background: #444; color: #fff; }
+
+    /* --- MAIN CONTAINER --- */
+    #main-container { flex: 1; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+    
+    .view-section {
+        width: 100%; height: 100%; position: absolute; top: 0; left: 0; 
+        background: var(--bg-color); opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        display: flex; flex-direction: column; overflow: hidden;
+    }
+    .view-section.active { opacity: 1; pointer-events: all; z-index: 10; }
+
+    /* --- PARAMS TAB --- */
+    #tab-params { padding: 15px; overflow-y: auto; display: none; max-width: 800px; margin: 0 auto; width: 100%; }
+    #tab-params.active { display: block; }
+
+    .panel-section { 
+        background: #252525; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border-color);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    h3 { margin: 0 0 12px 0; font-size: 15px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #444; padding-bottom: 8px;}
+
+    /* Inputs & Forms - RESPONSIVE FIX */
+    .team-edit-row { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 6px; margin-bottom: 8px; color: white; }
+    .team-edit-row.t1 { background: rgba(211, 47, 47, 0.2); border: 1px solid var(--team1-bg); }
+    .team-edit-row.t2 { background: rgba(56, 142, 60, 0.2); border: 1px solid var(--team2-bg); }
+    .team-edit-row.t3 { background: rgba(25, 118, 210, 0.2); border: 1px solid var(--team3-bg); }
+    
+    .edit-inputs { 
+        display: flex; gap: 8px; 
+        width: 100%; 
+    }
+    .team-name-input { 
+        background: #333; border: 1px solid #555; color: #fff; padding: 8px; border-radius: 4px; 
+        flex: 2; min-width: 0; 
+    }
+    .team-money-input { 
+        background: #222; border: 1px solid #555; color: var(--accent-color); font-family: monospace; 
+        padding: 8px; border-radius: 4px; flex: 1; text-align: center; min-width: 60px; 
+    }
+
+    .category-select-list {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px;
+        max-height: 300px; overflow-y: auto; padding: 5px; background: #1a1a1a; border-radius: 6px; border: 1px solid #333;
+    }
+    .cat-check-item {
+        background: #333; padding: 10px; border-radius: 4px; display: flex; align-items: center; gap: 8px; cursor: pointer; border: 1px solid transparent;
+    }
+    .cat-check-item.selected { border-color: gold; background: #443300; }
+    .cat-check-item input { pointer-events: none; transform: scale(1.2); }
+
+    .db-cat-select { width: 100%; padding: 10px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; margin-bottom: 10px; }
+    .db-q-row { background: #1a1a1a; padding: 10px; margin-bottom: 8px; border-left: 3px solid #555; display: flex; flex-direction: column; gap: 6px; }
+    .db-input { background: #222; border: 1px solid #444; color: #fff; padding: 8px; border-radius: 4px; width: 100%; }
+    
+    .btn-del { background: var(--danger-color); color: white; padding: 6px 12px; border-radius: 4px; font-size: 12px; align-self: flex-end; margin-top: 5px;}
+    .btn-add { background: var(--success-color); color: white; padding: 10px; width: 100%; border-radius: 6px; font-weight: bold; margin-top: 10px; }
+    
+    .config-inputs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .config-group { text-align: center; }
+    .config-label { display: block; font-size: 12px; color: #aaa; margin-bottom: 4px; }
+    .config-input { background: #333; border: 1px solid #555; color: #fff; padding: 10px; border-radius: 6px; text-align: center; width: 100%; font-size: 18px; font-weight: bold; }
+
+    .file-input-wrapper {
+        margin-top: 10px; padding: 15px; border: 2px dashed #444; border-radius: 8px; text-align: center; cursor: pointer;
+    }
+    .file-input-wrapper:hover { border-color: var(--accent-color); background: rgba(255,255,255,0.05); }
+
+    /* Install Button */
+    #install-btn-container { margin-bottom: 15px; display: none; }
+    .btn-install { background: #fff; color: #000; font-weight: 900; width: 100%; padding: 15px; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+
+    /* --- GAME TAB --- */
+    #tab-game { display: none; flex-direction: column; height: 100%; background: radial-gradient(circle, #1e1e1e 0%, #000 100%); }
+    #tab-game.active { display: flex; }
+
+    /* Wheel Section */
+    #wheel-view-section { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; padding: 10px; position: relative; overflow: hidden;}
+    #wheelCanvas { max-width: 90vw; max-height: 60vh; width: auto; height: auto; filter: drop-shadow(0 0 15px rgba(0,0,0,0.5)); border-radius: 50%; border: 4px solid #333; }
+    
+    #tvCategoryWheel {
+        font-size: 24px; color: gold; font-weight: 900; text-transform: uppercase; text-shadow: 0 0 10px rgba(0,0,0,0.8);
+        margin-bottom: 15px; text-align: center; min-height: 30px;
+    }
+
+    /* InGame Section */
+    #ingame-view-section { display: none; flex-direction: column; height: 100%; padding: 0; }
+    
+    /* Top Bar: Teams */
+    .ingame-teams-panel {
+        background: #111; padding: 5px; display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid #333; flex-shrink: 0;
+    }
+    .ingame-team-row {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 8px 12px; color: white; font-weight: bold; font-size: 14px; border-radius: 4px;
+    }
+    .ingame-money { font-family: monospace; color: gold; }
+
+    /* Middle Bar: Pool */
+    .ingame-info-panel {
+        background: #222; padding: 10px; text-align: center; border-bottom: 1px solid #333; flex-shrink: 0;
+    }
+    .pool-display { font-size: 24px; color: gold; font-weight: bold; font-family: monospace; }
+    .category-display { font-size: 16px; color: var(--accent-color); font-weight: 800; text-transform: uppercase; margin-top: 2px; }
+
+    /* Bottom Bar: Action Area */
+    .ingame-action-panel {
+        flex: 1; background: rgba(0,0,0,0.2); padding: 10px; overflow-y: auto; display: flex; flex-direction: column; align-items: center;
+    }
+
+    /* Bidding Styles */
+    .bidding-grid { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 600px; }
+    .bid-team-row { background: #333; padding: 10px; border-radius: 6px; display: flex; flex-direction: column; gap: 8px; }
+    .bid-info { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; }
+    .bid-controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; }
+    
+    /* BETTING COLORS RESTORED */
+    .btn-bet { padding: 8px; border-radius: 4px; color: white; font-weight: bold; font-size: 14px; }
+    .btn-bet:disabled { opacity: 0.3; filter: grayscale(1); }
+    .btn-t1 { background: var(--team1-bg); }
+    .btn-t2 { background: var(--team2-bg); }
+    .btn-t3 { background: var(--team3-bg); }
+    .btn-vabank { background: #000; border: 1px solid white; color: white; }
+
+    /* Question Styles */
+    .question-card {
+        background: #fff; color: #121212; width: 100%; padding: 20px; border-radius: 8px;
+        font-size: 20px; text-align: center; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        margin-bottom: 20px; word-break: break-word; overflow-wrap: break-word;
+    }
+    .answer-reveal { color: var(--success-color); margin-top: 20px; font-size: 24px; font-weight: 900; border-top: 1px dashed #999; padding-top: 15px; display: none; }
+    
+    .timer-display { font-size: 60px; font-weight: 900; font-family: monospace; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.2); margin: 10px 0; }
+    .timer-warning { color: var(--danger-color); animation: pulse 0.5s infinite; }
+    @keyframes pulse { 50% { opacity: 0.7; } }
+
+    /* Generic Buttons */
+    .main-action-btn {
+        padding: 15px 30px; font-size: 18px; border-radius: 8px; color: white; font-weight: bold; text-transform: uppercase;
+        box-shadow: 0 4px 0 rgba(0,0,0,0.4); margin-top: 10px; width: 100%; max-width: 300px;
+    }
+    .main-action-btn:active { transform: translateY(4px); box-shadow: none; }
+    
+    .btn-start-game { background: var(--accent-color); color: #000; }
+    .btn-spin-wheel { background: linear-gradient(135deg, #ff9800, #ff5722); }
+    .btn-resolve { background: #2196f3; font-size: 16px; padding: 12px 20px; margin: 5px; width: auto; min-width: 120px;}
+    .btn-wrong { background: var(--danger-color); }
+    .btn-correct { background: var(--success-color); }
+    .btn-next { background: #fff; color: #000; font-size: 22px; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #111; }
+    ::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #666; }
+
+    /* --- RESPONSIVE QUERIES --- */
+    @media (max-width: 600px) {
+        header { height: 45px; }
+        h1 { font-size: 14px; }
+        .config-inputs { grid-template-columns: 1fr; gap: 5px; }
+        .config-input { font-size: 16px; padding: 8px; }
+        
+        /* Ingame adjustments */
+        .ingame-team-row { padding: 6px 10px; font-size: 12px; }
+        .ingame-money { font-size: 14px; }
+        
+        .pool-display { font-size: 20px; }
+        .category-display { font-size: 14px; }
+        
+        .question-card { font-size: 16px; padding: 15px; }
+        .answer-reveal { font-size: 18px; }
+        .timer-display { font-size: 50px; }
+        
+        .btn-bet { font-size: 12px; padding: 8px 2px; }
+        
+        .main-action-btn { font-size: 16px; padding: 12px; }
+    }
+</style>
+</head>
+<body>
+
+<div id="toast-container"></div>
+
+<header>
+    <div class="host-tabs">
+        <button class="tab-btn active" onclick="app.ui.switchTab('params')">⚙️ Setup</button>
+        <button class="tab-btn" onclick="app.ui.switchTab('game')">🎮 Gra</button>
+    </div>
+    <h1>Awantura V15</h1>
+    <div style="width: 30px;"></div> </header>
+
+<div id="main-container">
+
+    <div id="tab-params" class="view-section active">
+        
+        <div id="install-btn-container">
+            <button id="btn-pwa-install" class="btn-install">
+                📱 ZAINSTALUJ APLIKACJĘ
+            </button>
+        </div>
+
+        <div class="panel-section">
+            <h3>Drużyny</h3>
+            <div id="params-teams-container"></div>
+        </div>
+
+        <div class="panel-section">
+            <h3>Kategorie (Max 10)</h3>
+            <div style="margin-bottom:8px; font-size:14px; color:#aaa;">Wybrano: <strong id="cat-count" style="color:var(--accent-color);">0</strong></div>
+            <div id="category-checkbox-list" class="category-select-list"></div>
+            <button id="btn-start-from-db" class="main-action-btn btn-start-game" onclick="app.game.startFlow()" disabled>▶ START GRY</button>
+        </div>
+
+        <div class="panel-section">
+            <h3>Baza Pytań</h3>
+            
+            <div class="file-input-wrapper" onclick="document.getElementById('fileInput').click()">
+                <div style="font-weight:bold; color:var(--accent-color);">📂 Kliknij, by wczytać plik .txt</div>
+                <div style="font-size:12px; color:#888; margin-top:5px;">Format: Kategoria;Pytanie;Odpowiedź</div>
+                <input type="file" id="fileInput" accept=".txt" style="display:none" onchange="app.data.handleFile(this)">
+            </div>
+
+            <div style="margin-top:15px; border-top:1px solid #444; padding-top:10px;">
+                <select id="dbCatSelect" class="db-cat-select" onchange="app.ui.renderDBEditor()"></select>
+                <div id="dbQuestionsList" style="max-height: 300px; overflow-y:auto; margin-bottom:10px; border:1px solid #333; border-radius:4px;"></div>
+                
+                <div style="background:#222; padding:10px; border-radius:4px;">
+                    <input type="text" id="newQ" placeholder="Nowe pytanie" class="db-input" style="margin-bottom:5px;">
+                    <input type="text" id="newA" placeholder="Odpowiedź" class="db-input" style="margin-bottom:5px;">
+                    <button class="btn-add" onclick="app.data.addQuestion()">+ DODAJ</button>
+                </div>
+                <div style="margin-top:10px; display:flex; gap:5px;">
+                    <input type="text" id="newCatName" placeholder="Nazwa kategorii" class="db-input" style="flex:1;">
+                    <button class="btn-add" style="width:auto;" onclick="app.data.addCategory()">+ KAT</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <h3>Ustawienia</h3>
+            <div class="config-inputs">
+                <div class="config-group">
+                    <label class="config-label">Wejście</label>
+                    <input type="number" id="entryFee" value="200" class="config-input">
+                </div>
+                <div class="config-group">
+                    <label class="config-label">Min Stawka</label>
+                    <input type="number" id="minBet" value="100" class="config-input">
+                </div>
+                <div class="config-group">
+                    <label class="config-label">Czas (s)</label>
+                    <input type="number" id="roundTime" value="60" class="config-input">
+                </div>
+            </div>
+            <div style="margin-top:15px;">
+                <button class="main-action-btn" id="finalBtn" style="background:#444; color:#aaa;" onclick="app.game.toggleFinalMode()">🏆 FINAŁ (OFF)</button>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <h3>Zarządzanie</h3>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <button class="btn-del" style="align-self:stretch; padding:12px; font-size:14px;" onclick="app.game.reset()">🔄 RESET</button>
+                <button class="main-action-btn btn-start-game" style="margin:0; font-size:14px;" onclick="app.data.save(true)">💾 ZAPISZ</button>
+            </div>
+        </div>
+        
+        <div style="height: 20px;"></div>
+    </div>
+
+    <div id="tab-game" class="view-section">
+        
+        <div id="wheel-view-section">
+            <div id="tvCategoryWheel" class="hidden"></div>
+            <canvas id="wheelCanvas" width="800" height="800"></canvas>
+            <div id="wheel-controls" style="width: 100%; text-align: center; margin-top: 10px;">
+                <button id="btn-main-action" class="main-action-btn" onclick="app.game.handleMainAction()">OCZEKIWANIE...</button>
+            </div>
+        </div>
+
+        <div id="ingame-view-section">
+            
+            <div id="ingame-teams-panel" class="ingame-teams-panel"></div>
+
+            <div class="ingame-info-panel">
+                <div class="pool-display"><span id="ingame-pool">0</span> zł</div>
+                <div id="ingame-category" class="category-display">---</div>
+            </div>
+
+            <div class="ingame-action-panel">
+                
+                <div id="bidding-view" class="hidden" style="width:100%; max-width:600px;">
+                    <h3 style="text-align:center; margin: 0 0 15px 0;">LICYTACJA</h3>
+                    <div id="ingame-bidding-controls" class="bidding-grid"></div>
+                    <button class="main-action-btn" style="background:#555; margin-top:15px;" onclick="app.game.resolveBidding()">🛑 ZAKOŃCZ</button>
+                </div>
+
+                <div id="question-view" class="hidden" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center;">
+                    <div class="question-card">
+                        <div id="question-text">...</div>
+                        <div id="answer-text" class="answer-reveal">...</div>
+                    </div>
+                    
+                    <div id="timer-display">60</div>
+                    
+                    <div id="host-controls-question" style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+                        <button class="main-action-btn btn-resolve" id="btn-reveal" onclick="app.game.revealAnswer()">👁️ ODPOWIEDŹ</button>
+                        <button class="main-action-btn btn-wrong hidden" id="btn-wrong" onclick="app.game.resolveRound(false)">✖ ŹLE</button>
+                        <button class="main-action-btn btn-correct hidden" id="btn-correct" onclick="app.game.resolveRound(true)">✔ DOBRZE</button>
+                    </div>
+                </div>
+
+                <div id="round-end-view" class="hidden" style="text-align:center; width:100%;">
+                    <h2 style="color:gold; margin-bottom:20px;">KONIEC RUNDY</h2>
+                    <button class="main-action-btn btn-next" onclick="app.game.nextRound()">NASTĘPNA ➡</button>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+/**
+ * AOK V15 - PWA Enabled
+ */
+
+// --- SERVICE WORKER REGISTRATION ---
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+            .then(reg => console.log('SW zarejestrowany:', reg))
+            .catch(err => console.error('Błąd SW:', err));
+    });
+}
+
+// --- PWA INSTALL PROMPT ---
+let deferredPrompt;
+const installBtnContainer = document.getElementById('install-btn-container');
+const installBtn = document.getElementById('btn-pwa-install');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Prevent Chrome 67 and earlier from automatically showing the prompt
+    e.preventDefault();
+    // Stash the event so it can be triggered later.
+    deferredPrompt = e;
+    // Update UI to notify the user they can add to home screen
+    installBtnContainer.style.display = 'block';
+});
+
+installBtn.addEventListener('click', (e) => {
+    installBtnContainer.style.display = 'none';
+    if(deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+                console.log('User accepted the A2HS prompt');
+            }
+            deferredPrompt = null;
+        });
+    }
+});
+
+
+const app = {
+    state: {
+        teams: [
+            { id: 0, name: "Czerwoni", money: 5000, bet: 0, cssVar: '--team1-bg' },
+            { id: 1, name: "Zieloni", money: 5000, bet: 0, cssVar: '--team2-bg' },
+            { id: 2, name: "Niebiescy", money: 5000, bet: 0, cssVar: '--team3-bg' }
+        ],
+        categories: {},
+        categoryColors: {},
+        activeCategories: new Set(),
+        pool: 0,
+        highestBet: 0,
+        finalMode: false,
+        gameState: 'SETUP', 
+        currentCategory: null,
+        currentQuestion: null,
+        winnerIndex: null,
+        wheelRotation: 0,
+        isSpinning: false
+    },
+
+    // --- DATA & STORAGE ---
+    data: {
+        defaultDB: {
+            "Geografia": [{q:"Najdłuższa rzeka świata?", a:"Nil"}, {q:"Gdzie jest wieża Eiffla?", a:"Francja"}, {q:"Największy ocean?", a:"Spokojny"}],
+            "Nauka": [{q:"Symbol wody?", a:"H2O"}, {q:"Planeta najbliżej Słońca?", a:"Merkury"}],
+            "Historia": [{q:"Początek II WŚ?", a:"1939"}, {q:"Pierwszy prezydent USA?", a:"Washington"}],
+            "Kino": [{q:"Zielony ogr?", a:"Shrek"}, {q:"Oskary dla 'Titanic'?", a:"11"}],
+            "Sport": [{q:"Piłka nożna - liczba zawodników?", a:"11"}, {q:"Pierwsze nowożytne IO?", a:"Grecja"}],
+            "Muzyka": [{q:"Strun gitary klasycznej?", a:"6"}, {q:"Ojczyzna ABBY?", a:"Szwecja"}],
+            "Tech": [{q:"Założyciel Microsoft?", a:"Bill Gates"}, {q:"System iOS?", a:"Apple"}],
+            "Biologia": [{q:"Największy narząd?", a:"Skóra"}, {q:"Kości dorosłego człowieka?", a:"206"}],
+            "Kultura": [{q:"Japoński teatr?", a:"Kabuki"}, {q:"Ojczyzna Tanga?", a:"Argentyna"}]
+        },
+
+        init: function() {
+            const save = localStorage.getItem('aok_v15_data');
+            if(save) {
+                try {
+                    const parsed = JSON.parse(save);
+                    app.state.categories = parsed.categories || {};
+                    app.state.categoryColors = parsed.categoryColors || {};
+                    app.state.teams = parsed.teams || app.state.teams;
+                    app.state.activeCategories = new Set(parsed.activeCategories || []);
+                    app.state.finalMode = parsed.finalMode || false;
+                } catch(e) { console.error("Save error", e); }
+            } else {
+                app.state.categories = JSON.parse(JSON.stringify(this.defaultDB));
+                Object.keys(app.state.categories).forEach(c => {
+                    app.state.categoryColors[c] = `hsl(${Math.floor(Math.random()*360)}, 70%, 40%)`;
+                });
+            }
+            app.ui.init();
+        },
+
+        save: function(notify = true) {
+            const data = {
+                categories: app.state.categories,
+                categoryColors: app.state.categoryColors,
+                teams: app.state.teams,
+                activeCategories: Array.from(app.state.activeCategories),
+                finalMode: app.state.finalMode
+            };
+            localStorage.setItem('aok_v15_data', JSON.stringify(data));
+            if(notify) app.ui.toast("Zapisano stan gry!");
+        },
+
+        handleFile: function(input) {
+            const file = input.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target.result;
+                app.state.categories = {};
+                app.state.categoryColors = {};
+                app.state.activeCategories.clear();
+                
+                let added = 0;
+                text.split(/\r?\n/).forEach(line => {
+                    const parts = line.trim().split(';');
+                    if(parts.length === 3) {
+                        const [cat, q, a] = parts.map(p => p.trim());
+                        if(cat && q && a) {
+                            if(!app.state.categories[cat]) {
+                                app.state.categories[cat] = [];
+                                app.state.categoryColors[cat] = `hsl(${Math.floor(Math.random()*360)}, 70%, 40%)`;
+                            }
+                            app.state.categories[cat].push({q, a});
+                            added++;
+                        }
+                    }
+                });
+                input.value = '';
+                app.ui.renderDBSelect();
+                app.ui.renderCategories();
+                app.ui.toast(`Wczytano ${added} pytań.`);
+                app.data.save(false);
+            };
+            reader.readAsText(file);
+        },
+
+        addQuestion: function() {
+            const cat = document.getElementById('dbCatSelect').value;
+            const q = document.getElementById('newQ').value.trim();
+            const a = document.getElementById('newA').value.trim();
+            if(!cat || !q || !a) return app.ui.toast("Wypełnij wszystkie pola!");
+            app.state.categories[cat].push({q, a});
+            document.getElementById('newQ').value = '';
+            document.getElementById('newA').value = '';
+            app.ui.renderDBEditor();
+            app.data.save(false);
+        },
+
+        addCategory: function() {
+            const name = document.getElementById('newCatName').value.trim();
+            if(!name || app.state.categories[name]) return app.ui.toast("Błędna nazwa!");
+            app.state.categories[name] = [];
+            app.state.categoryColors[name] = `hsl(${Math.floor(Math.random()*360)}, 70%, 40%)`;
+            document.getElementById('newCatName').value = '';
+            app.ui.renderDBSelect();
+            app.ui.renderCategories();
+            app.data.save(false);
+        }
+    },
+
+    // --- UI RENDERERS ---
+    ui: {
+        toast: function(msg) {
+            const div = document.createElement('div');
+            div.className = 'toast';
+            div.textContent = msg;
+            document.getElementById('toast-container').appendChild(div);
+            setTimeout(() => div.remove(), 3100);
+        },
+
+        init: function() {
+            this.renderParamsTeams();
+            this.renderCategories();
+            this.renderDBSelect();
+            this.updateStateUI();
+            this.initWheel();
+        },
+
+        switchTab: function(tab) {
+            document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(e => e.classList.remove('active'));
+            document.getElementById(`tab-${tab}`).classList.add('active');
+            document.querySelectorAll('.tab-btn')[tab === 'params' ? 0 : 1].classList.add('active');
+            if(tab === 'game') this.initWheel();
+        },
+
+        renderParamsTeams: function() {
+            const c = document.getElementById('params-teams-container');
+            c.innerHTML = '';
+            app.state.teams.forEach((t, i) => {
+                const div = document.createElement('div');
+                div.className = `team-edit-row t${i+1}`;
+                div.innerHTML = `
+                    <div class="edit-inputs">
+                        <input class="team-name-input" value="${t.name}" onchange="app.game.updateTeam(${i}, 'name', this.value)">
+                        <input class="team-money-input" type="number" value="${t.money}" onchange="app.game.updateTeam(${i}, 'money', this.value)">
+                    </div>`;
+                c.appendChild(div);
+            });
+        },
+
+        renderCategories: function() {
+            const c = document.getElementById('category-checkbox-list');
+            const count = document.getElementById('cat-count');
+            c.innerHTML = '';
+            Object.keys(app.state.categories).sort().forEach(cat => {
+                const isActive = app.state.activeCategories.has(cat);
+                const div = document.createElement('div');
+                div.className = `cat-check-item ${isActive ? 'selected' : ''}`;
+                div.innerHTML = `<input type="checkbox" ${isActive ? 'checked' : ''} readonly> ${cat}`;
+                div.onclick = () => {
+                    if(app.state.activeCategories.has(cat)) app.state.activeCategories.delete(cat);
+                    else if(app.state.activeCategories.size < 10) app.state.activeCategories.add(cat);
+                    this.renderCategories();
+                };
+                c.appendChild(div);
+            });
+            count.textContent = app.state.activeCategories.size;
+            document.getElementById('btn-start-from-db').disabled = app.state.activeCategories.size === 0;
+        },
+
+        renderDBSelect: function() {
+            const sel = document.getElementById('dbCatSelect');
+            sel.innerHTML = '';
+            Object.keys(app.state.categories).sort().forEach(c => {
+                const opt = document.createElement('option'); opt.value = c; opt.textContent = c;
+                sel.appendChild(opt);
+            });
+            this.renderDBEditor();
+        },
+
+        renderDBEditor: function() {
+            const cat = document.getElementById('dbCatSelect').value;
+            const list = document.getElementById('dbQuestionsList');
+            list.innerHTML = '';
+            if(!app.state.categories[cat]) return;
+            app.state.categories[cat].forEach((item, idx) => {
+                const row = document.createElement('div');
+                row.className = 'db-q-row';
+                row.innerHTML = `
+                    <div style="display:flex; gap:5px;">
+                        <input class="db-input" value="${item.q}" onchange="app.data.updateQ('${cat}', ${idx}, 'q', this.value)">
+                        <input class="db-input" value="${item.a}" onchange="app.data.updateQ('${cat}', ${idx}, 'a', this.value)">
+                    </div>
+                    <button class="btn-del" onclick="app.data.delQ('${cat}', ${idx})">USUŃ</button>`;
+                list.appendChild(row);
+            });
+        },
+
+        updateStateUI: function() {
+            const isPreRound = ['SETUP', 'PRE_ROUND', 'WHEEL_SPIN', 'WHEEL_RESULT'].includes(app.state.gameState);
+            document.getElementById('wheel-view-section').style.display = isPreRound ? 'flex' : 'none';
+            document.getElementById('ingame-view-section').style.display = isPreRound ? 'none' : 'flex';
+
+            document.getElementById('bidding-view').classList.add('hidden');
+            document.getElementById('question-view').classList.add('hidden');
+            document.getElementById('round-end-view').classList.add('hidden');
+
+            const tCont = document.getElementById('ingame-teams-panel');
+            tCont.innerHTML = '';
+            app.state.teams.forEach(t => {
+                const d = document.createElement('div');
+                d.className = `ingame-team-row t${t.id+1}`;
+                d.innerHTML = `<span>${t.name}</span><span class="ingame-money">${t.money}</span>`;
+                tCont.appendChild(d);
+            });
+            document.getElementById('ingame-pool').textContent = app.state.pool;
+            document.getElementById('ingame-category').textContent = app.state.currentCategory || "---";
+
+            const btnMain = document.getElementById('btn-main-action');
+            const catLabel = document.getElementById('tvCategoryWheel');
+            catLabel.classList.add('hidden');
+
+            switch(app.state.gameState) {
+                case 'SETUP':
+                case 'PRE_ROUND':
+                    btnMain.textContent = "LOSUJ KATEGORIĘ";
+                    btnMain.className = "main-action-btn btn-spin-wheel";
+                    btnMain.disabled = false;
+                    app.ui.drawWheel();
+                    break;
+                case 'WHEEL_SPIN':
+                    btnMain.textContent = "LOSOWANIE...";
+                    btnMain.className = "main-action-btn btn-resolve";
+                    btnMain.disabled = true;
+                    break;
+                case 'WHEEL_RESULT':
+                    catLabel.textContent = app.state.currentCategory;
+                    catLabel.classList.remove('hidden');
+                    btnMain.textContent = "START LICYTACJI";
+                    btnMain.className = "main-action-btn btn-start-game";
+                    btnMain.disabled = false;
+                    break;
+                case 'BIDDING':
+                    document.getElementById('bidding-view').classList.remove('hidden');
+                    app.ui.renderBidding();
+                    break;
+                case 'QUESTION':
+                    document.getElementById('question-view').classList.remove('hidden');
+                    document.getElementById('question-text').textContent = app.state.currentQuestion.q;
+                    document.getElementById('answer-text').textContent = app.state.currentQuestion.a;
+                    document.getElementById('answer-text').style.display = 'none';
+                    document.getElementById('btn-reveal').classList.remove('hidden');
+                    document.getElementById('btn-wrong').classList.add('hidden');
+                    document.getElementById('btn-correct').classList.add('hidden');
+                    app.game.startTimer();
+                    break;
+                case 'ROUND_END':
+                    document.getElementById('round-end-view').classList.remove('hidden');
+                    break;
+            }
+        },
+
+        renderBidding: function() {
+            const c = document.getElementById('ingame-bidding-controls');
+            c.innerHTML = '';
+            const minBet = parseInt(document.getElementById('minBet').value) || 0;
+            
+            app.state.teams.forEach((t, i) => {
+                const canAfford = (t.money + t.bet) >= ((app.state.highestBet === 0) ? minBet : app.state.highestBet + minBet);
+                const row = document.createElement('div');
+                row.className = 'bid-team-row';
+                row.innerHTML = `
+                    <div class="bid-info">
+                        <span>${t.name}</span>
+                        <span style="font-size:12px; color:#888;">Kasa: ${t.money} (Stawka: ${t.bet})</span>
+                    </div>
+                    <div class="bid-controls">
+                        <button class="btn-bet btn-t${i+1}" onclick="app.game.placeBet(${i}, 100)" ${!canAfford ? 'disabled' : ''}>+100</button>
+                        <button class="btn-bet btn-t${i+1}" onclick="app.game.placeBet(${i}, 500)" ${!canAfford ? 'disabled' : ''}>+500</button>
+                        <button class="btn-bet btn-vabank" onclick="app.game.vaBank(${i})" ${!canAfford ? 'disabled' : ''}>ALL IN</button>
+                    </div>`;
+                c.appendChild(row);
+            });
+        },
+
+        // --- WHEEL LOGIC ---
+        ctx: null,
+        canvas: null,
+        initWheel: function() {
+            const c = document.getElementById('wheelCanvas');
+            if(c && !this.canvas) {
+                this.canvas = c;
+                this.ctx = c.getContext('2d');
+            }
+            this.drawWheel();
+        },
+        
+        drawWheel: function() {
+            if(!this.ctx) return;
+            const ctx = this.ctx;
+            const w = 800; h = 800; cx = w/2; cy = h/2; r = w/2 - 20;
+            
+            ctx.clearRect(0, 0, w, h);
+            const cats = Array.from(app.state.activeCategories);
+            if(cats.length === 0) {
+                ctx.fillStyle = "#333"; ctx.font = "bold 30px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                ctx.fillText("BRAK PYTAŃ", cx, cy); return;
+            }
+            
+            const slice = (Math.PI * 2) / cats.length;
+            
+            ctx.save(); ctx.translate(cx, cy); ctx.rotate(app.state.wheelRotation);
+            
+            cats.forEach((cat, i) => {
+                ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,r, i*slice, (i+1)*slice); ctx.closePath();
+                ctx.fillStyle = app.state.categoryColors[cat] || '#555'; ctx.fill(); ctx.stroke();
+                
+                ctx.save(); ctx.rotate(i*slice + slice/2); ctx.textAlign = "right"; ctx.fillStyle = "#fff";
+                ctx.font = "bold 24px Arial"; ctx.shadowColor="black"; ctx.shadowBlur=4;
+                
+                // FIX: Show question count
+                const count = app.state.categories[cat] ? app.state.categories[cat].length : 0;
+                let txt = cat;
+                // Truncate name if too long with count
+                const maxLen = 12; 
+                if (cat.length > maxLen) txt = cat.substring(0,maxLen-2) + "..";
+                
+                // Append count
+                let fullTxt = `${txt} (${count})`;
+                
+                ctx.fillText(fullTxt, r - 20, 8);
+                ctx.restore();
+            });
+            ctx.restore();
+            
+            // Arrow
+            ctx.save(); ctx.translate(cx, cy - r + 15);
+            ctx.beginPath(); ctx.moveTo(-20, -25); ctx.lineTo(20, -25); ctx.lineTo(0, 25); ctx.fillStyle = "#fff"; ctx.fill(); ctx.restore();
+        },
+
+        spinAnimation: function() {
+            if(app.state.isSpinning) return;
+            const cats = Array.from(app.state.activeCategories);
+            if(!cats.length) return;
+
+            app.state.isSpinning = true;
+            const duration = 4000;
+            const start = performance.now();
+            const startRot = app.state.wheelRotation;
+            const spins = 5 + Math.random() * 5;
+            const endRot = startRot + (spins * Math.PI * 2);
+
+            function loop(now) {
+                const p = Math.min((now - start) / duration, 1);
+                const ease = 1 - Math.pow(1 - p, 3);
+                app.state.wheelRotation = startRot + (endRot - startRot) * ease;
+                app.ui.drawWheel();
+                
+                if(p < 1) requestAnimationFrame(loop);
+                else {
+                    app.state.isSpinning = false;
+                    app.game.pickWinner();
+                }
+            }
+            requestAnimationFrame(loop);
+        }
+    },
+
+    // --- GAME LOGIC ---
+    game: {
+        startFlow: function() {
+            if(app.state.activeCategories.size === 0) return;
+            app.state.gameState = 'PRE_ROUND';
+            app.ui.switchTab('game');
+            app.ui.updateStateUI();
+        },
+
+        handleMainAction: function() {
+            if(app.state.gameState === 'PRE_ROUND') {
+                app.state.gameState = 'WHEEL_SPIN';
+                app.ui.updateStateUI();
+                app.ui.spinAnimation();
+            } else if (app.state.gameState === 'WHEEL_RESULT') {
+                this.startBidding();
+            }
+        },
+
+        pickWinner: function() {
+            const cats = Array.from(app.state.activeCategories);
+            const slice = (Math.PI * 2) / cats.length;
+            let rot = app.state.wheelRotation % (Math.PI * 2);
+            let angle = (1.5 * Math.PI - rot + Math.PI * 2) % (Math.PI * 2);
+            const idx = Math.floor(angle / slice);
+            app.state.currentCategory = cats[idx];
+            app.state.gameState = 'WHEEL_RESULT';
+            app.ui.updateStateUI();
+        },
+
+        startBidding: function() {
+            const entry = parseInt(document.getElementById('entryFee').value) || 0;
+            app.state.teams.forEach(t => {
+                const pay = Math.min(t.money, entry);
+                t.money -= pay;
+                app.state.pool += pay;
+            });
+            if(app.state.finalMode) app.state.pool *= 2;
+            
+            app.state.teams.forEach(t => t.bet = 0);
+            app.state.highestBet = 0;
+            app.state.winnerIndex = null;
+            app.state.gameState = 'BIDDING';
+            app.ui.updateStateUI();
+        },
+
+        placeBet: function(idx, amount) {
+            const t = app.state.teams[idx];
+            const minBet = parseInt(document.getElementById('minBet').value) || 0;
+            let target = app.state.highestBet + amount;
+            const minReq = app.state.highestBet === 0 ? minBet : (app.state.highestBet + minBet);
+            
+            if(target < minReq) target = minReq;
+            if((t.money + t.bet) < target) return;
+
+            const diff = target - t.bet;
+            app.state.pool += diff;
+            t.money -= diff;
+            t.bet = target;
+            app.state.highestBet = target;
+            app.state.winnerIndex = idx;
+            app.ui.updateStateUI();
+        },
+
+        vaBank: function(idx) {
+            const t = app.state.teams[idx];
+            const total = t.money + t.bet;
+            if(!confirm(`VA BANK dla ${t.name}?`)) return;
+            if(total < (app.state.highestBet + (parseInt(document.getElementById('minBet').value) || 0))) return;
+
+            const diff = total - t.bet;
+            app.state.pool += diff;
+            t.money = 0;
+            t.bet = total;
+            app.state.highestBet = total;
+            app.state.winnerIndex = idx;
+            app.ui.updateStateUI();
+        },
+
+        resolveBidding: function() {
+            if(app.state.winnerIndex === null) {
+                if(!confirm("Nikt nie zalicytował. Kontynuować?")) return;
+                app.state.teams.forEach(t => { t.money += t.bet; t.bet = 0; });
+                app.state.pool = 0;
+                app.state.gameState = 'PRE_ROUND';
+            } else {
+                const qs = app.state.categories[app.state.currentCategory];
+                if(!qs || qs.length === 0) return app.ui.toast("Brak pytań w tej kategorii!");
+                app.state.currentQuestion = qs[Math.floor(Math.random() * qs.length)];
+                app.state.gameState = 'QUESTION';
+            }
+            app.ui.updateStateUI();
+        },
+
+        timerInt: null,
+        startTimer: function() {
+            clearInterval(this.timerInt);
+            let time = parseInt(document.getElementById('roundTime').value) || 60;
+            const el = document.getElementById('timer-display');
+            el.textContent = time;
+            el.className = 'timer-display';
+            
+            this.timerInt = setInterval(() => {
+                time--;
+                el.textContent = time;
+                if(time <= 10) el.className = 'timer-display timer-warning';
+                if(time <= 0) clearInterval(this.timerInt);
+            }, 1000);
+        },
+
+        revealAnswer: function() {
+            document.getElementById('answer-text').style.display = 'block';
+            document.getElementById('btn-reveal').classList.add('hidden');
+            document.getElementById('btn-wrong').classList.remove('hidden');
+            document.getElementById('btn-correct').classList.remove('hidden');
+            clearInterval(this.timerInt);
+        },
+
+        resolveRound: function(correct) {
+            if(correct) {
+                app.state.teams[app.state.winnerIndex].money += app.state.pool;
+                app.state.pool = 0;
+            }
+            const qs = app.state.categories[app.state.currentCategory];
+            const qIdx = qs.indexOf(app.state.currentQuestion);
+            if(qIdx > -1) qs.splice(qIdx, 1);
+            if(qs.length === 0) {
+                delete app.state.categories[app.state.currentCategory];
+                app.state.activeCategories.delete(app.state.currentCategory);
+            }
+            
+            app.state.teams.forEach(t => t.bet = 0);
+            app.state.highestBet = 0;
+            app.state.winnerIndex = null;
+            app.state.gameState = 'ROUND_END';
+            app.ui.updateStateUI();
+            app.data.save(false);
+        },
+
+        nextRound: function() {
+            app.state.currentCategory = null;
+            app.state.gameState = 'PRE_ROUND';
+            app.ui.updateStateUI();
+        },
+
+        updateTeam: function(idx, field, val) {
+            if(field === 'money') val = parseInt(val) || 0;
+            app.state.teams[idx][field] = val;
+            app.data.save(false);
+        },
+
+        toggleFinalMode: function() {
+            app.state.finalMode = !app.state.finalMode;
+            document.getElementById('finalBtn').textContent = `🏆 FINAŁ (${app.state.finalMode ? 'ON' : 'OFF'})`;
+            document.getElementById('finalBtn').style.color = app.state.finalMode ? '#000' : '#aaa';
+            document.getElementById('finalBtn').style.background = app.state.finalMode ? 'var(--team2-bg)' : '#444';
+            app.data.save(false);
+        },
+
+        reset: function() {
+            if(confirm("Na pewno zresetować całą grę?")) {
+                localStorage.removeItem('aok_v15_data');
+                location.reload();
+            }
+        }
+    }
+};
+
+app.data.updateQ = (c, i, f, v) => { app.state.categories[c][i][f] = v; app.data.save(false); };
+app.data.delQ = (c, i) => { 
+    if(confirm("Usunąć pytanie?")) { 
+        app.state.categories[c].splice(i, 1); 
+        if(app.state.categories[c].length === 0) { 
+            delete app.state.categories[c]; 
+            app.state.activeCategories.delete(c); 
+        }
+        app.ui.renderDBEditor(); app.ui.renderCategories(); app.data.save(false); 
+    }
+};
+
+window.onload = () => app.data.init();
+</script>
+</body>
+</html>
